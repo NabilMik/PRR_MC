@@ -1,0 +1,403 @@
+---
+title: "PRR MINICHALLENGE FS24"
+subtitle: "Scraping und Vergleich von Immobilien-Mietangeboten"
+author: "Nabil Mikhael, Alessandro Gregori"
+date: "`r Sys.Date()`"  # Fügt das aktuelle Datum hinzu
+format:
+  html:
+    toc: true
+    toc-title: "Inhaltsverzeichnis"
+    toc-location: left
+    toc-depth: 3
+editor: visual
+---
+
+# 1. SETUP
+
+## 1.1 Renv
+
+```{r}
+# Verwende renv mit Projekt:
+renv::init()
+
+#Speichere aktuell verwendete Pakete in ein .lockfile
+renv::snapshot()
+
+# Wenn das Projekt z.B. von GitHub heruntergeladen wurde, stellte alle 
+# Pakete her (d.h. installiere enstprechende Versionen)
+renv::restore()
+
+# Pakete können zwischendurch geupdatet werden
+renv::update()
+```
+
+## 1.2 Installieren der packages
+
+```{r}
+# Installieren der Packages, falls noch nicht vorhanden
+if (!requireNamespace("rvest", quietly = TRUE)) install.packages("rvest")
+if (!requireNamespace("tidyverse", quietly = TRUE)) install.packages("tidyverse")
+if (!requireNamespace("stringr", quietly = TRUE)) install.packages("stringr")
+if (!requireNamespace("purrr", quietly = TRUE)) install.packages("purrr")
+if (!requireNamespace("tibble", quietly = TRUE)) install.packages("tibble")
+if (!requireNamespace("DT", quietly = TRUE)) install.packages("DT")
+
+
+```
+
+## 1.3 Laden der packages
+
+```{r}
+library('rvest')
+library('tidyverse')
+library('stringr')
+library('purrr')
+library('tibble')
+library('DT')
+```
+
+# 2. WEBSCRAPING
+
+## 2.1 Funktion Extraktion letzte Seite
+
+```{r}
+
+# Funktion zur Extraktion der Nummer der letzten Seite aus einer URL
+get_last_page <- function(url) {
+  
+  # Lädt das HTML-Dokument von der angegebenen URL
+  page <- read_html(url)
+
+  # Verwendet CSS-Selektoren, um das vorletzte Element innerhalb der Paginator-Box zu extrahieren
+  last_page_number <- page %>%
+    html_elements(".HgPaginationSelector_paginatorBox_nNiMu a:nth-last-of-type(2)") %>% 
+    # Extrahiert den Textinhalt des HTML-Elements (dies sollte die Seitenzahl sein)
+    html_text() %>% 
+    # Schneidet das letzte Zeichen des Textes ab (Seitenzahl als letztes Zeichen)
+    str_sub(.,-1) %>% 
+    # Konvertiert den extrahierten Text in eine numerische Form
+    as.numeric()
+    
+  # Druckt die extrahierte Nummer der letzten Seite zur Überprüfung
+  print(paste("Extracted last page number:", last_page_number))
+  
+  # Gibt die Nummer der letzten Seite zurück
+  return(last_page_number)
+}
+```
+
+## 2.2 Erstellen des leeren Dataframes
+
+```{r}
+immoscout24_df <- tibble()
+```
+
+## 2.3 Vektorerstellung der gesuchten Städte
+
+```{r}
+# Erstellen des Vektors mit den gesuchten Städten
+cities <- c("basel", "zuerich", "bern")
+```
+
+## 2.4 Scraping
+
+```{r}
+# Scraping mittels for-Schleife über alle Städte und deren Seiten
+for (city in cities) {  # Schleife über alle Städte
+  link <- paste0("https://www.immoscout24.ch/de/immobilien/mieten/ort-", city, "?pn=1&nrf=3.5&nrt=3.5")  # URL Suche der gewünschten Stadt
+  last_page <- get_last_page(link)  # Letzte Seitenzahl extrahieren
+  
+  for (page_result in 1:last_page) {  # Schleife über die Seitenzahlen
+    link <- paste0("https://www.immoscout24.ch/de/immobilien/mieten/ort-",      city, "?pn=", page_result, "&nrf=3.5&nrt=3.5")  # URL der Seite
+    page <- read_html(link)
+    
+    size <- page %>%
+      html_elements("span+strong") %>%
+      html_text() %>% 
+      gsub("m²", "", .) %>%  # mit gsub m2 entfernen aus Fläche
+      as.numeric() # in numerische Zahl umwandeln
+    
+    price <- page %>%
+      html_elements(".HgListingRoomsLivingSpacePrice_price_u9Vee") %>%
+      html_text() %>% 
+      gsub(pattern = "[^0-9]", replace ="", .) %>% # Alle Werte ersetzen die keine Zahl zwischen 0-9 sind; Preis wird bspw. von " CHF 1’180.– " zu 1180
+      as.numeric()
+    
+    plz <- page %>%
+      html_elements("div address") %>%
+      html_text() %>% 
+      sapply(function(x) {
+        parts <- strsplit(x, " ")[[1]]  # Teilt die Adresse an den Leerzeichen
+        if (length(parts) >= 2) {
+          sub_part <- trimws(parts[length(parts)-1])  # Wählt vorletzten Teil und entfernt führende/anhängende Leerzeichen
+          return(sub_part)
+        } else {
+          return(NA)  # Rückgabe NA, wenn weniger als zwei Teile vorhanden sind
+        }
+      })
+
+
+  # Ermitteln der maximalsten Länge
+  max_length <- max(length(price), length(plz), length(size))
+
+  # Listen auf maximale Länge bringen
+  length(price) <- max_length
+  length(plz) <- max_length
+  length(size) <- max_length
+
+  # Zusammenfügen der Daten zu einem DataFrame
+  new_data <- tibble("Price [CHF]" = price, "Size [m2]" = size, PLZ = plz, City = city)
+  immoscout24_df <- rbind(immoscout24_df, new_data)
+
+
+  # Drucke die Seitennummer und den Link
+  print(paste("City:", city,"/ Page:", page_result, "/ Link:", link))
+  
+  # Schutzmechanismus der Webseite umgehen (wegen zu vielen Anfragen); sonst Bann 
+  Sys.sleep(5) # 5 Sekunden
+  }
+print(paste(city, "Finished"))
+}
+print("Scraping finished")
+```
+
+# 3. DATENAUFBEREITUNG
+
+## 3.1 Übersicht
+
+```{r}
+str(immoscout24_df)
+
+summary(immoscout24_df)
+
+print(immoscout24_df)
+
+# Interaktive Tabelle mittels DT
+datatable(immoscout24_df, options = list(pageLength = 10, autoWidth = TRUE))
+```
+
+## 3.2 Beobachtungen mit NA's entfernen
+
+```{r}
+immoscout24_df <- na.omit(immoscout24_df)
+```
+
+# 4. DATENEXPLORATION
+
+## 4.1 Vergleich statistischer Kennzahlen
+
+### 4.1.1 Erstellen der Summaries
+
+```{r}
+# Summary der Daten erstellen
+summary_all_cities_prices <- summary(immoscout24_df$`Price [CHF]`)
+summary_all_cities_sizes <- summary(immoscout24_df$`Size [m2]`)
+
+summary_basel_prices <- summary(immoscout24_df$`Price [CHF]`[immoscout24_df$City == "basel"])
+summary_basel_sizes <- summary(immoscout24_df$`Size [m2]`[immoscout24_df$City == "basel"])
+
+summary_zuerich_prices <- summary(immoscout24_df$`Price [CHF]`[immoscout24_df$City == "zuerich"])
+summary_zuerich_sizes <- summary(immoscout24_df$`Size [m2]`[immoscout24_df$City == "zuerich"])
+
+summary_bern_prices <- summary(immoscout24_df$`Price [CHF]`[immoscout24_df$City == "bern"])
+summary_bern_sizes <- summary(immoscout24_df$`Size [m2]`[immoscout24_df$City == "bern"])
+```
+
+### 4.1.2 Erstellen des Dataframes
+
+```{r}
+# Erstellung Dataframe
+summary_df <- data.frame(
+  Stadt = c(rep("Alle Städte", 6), rep("Basel", 6), rep("Zürich", 6), rep("Bern", 6)),
+  Kennwert = rep(names(summary_all_cities_prices), 4),
+  Preis = c(as.numeric(summary_all_cities_prices), 
+            as.numeric(summary_basel_prices), 
+            as.numeric(summary_zuerich_prices), 
+            as.numeric(summary_bern_prices)),
+  Grösse = c(as.numeric(summary_all_cities_sizes), 
+            as.numeric(summary_basel_sizes), 
+            as.numeric(summary_zuerich_sizes), 
+            as.numeric(summary_bern_sizes))
+)
+
+# Mean-Werte runden
+summary_df <- summary_df %>%
+  mutate(
+    Preis = ifelse(Kennwert == "Mean", round(Preis, 0), Preis),
+    Grösse = ifelse(Kennwert == "Mean", round(Grösse, 0), Grösse)
+  )
+
+print(summary_df)
+
+# Interaktive Tabelle mit DT anzeigen
+datatable(summary_df, options = list(pageLength = 10, autoWidth = TRUE))
+
+```
+
+### 4.1.3 Lollipop-Plot Summary Preise und Wohnungsgrössen
+
+```{r}
+# Reihenfolge der Kennwerte festlegen
+summary_df$Kennwert <- factor(summary_df$Kennwert, levels = c("Min.", "1st Qu.", "Median", "Mean", "3rd Qu.", "Max."))
+
+# Farbenzuteilung
+farben <- c("Basel" = "#E41A1C", "Zürich" = "#377EB8", "Bern" = "#4DAF4A", "Alle Städte" = "#984EA3")
+
+# Lollipop-Plot für Summary der Preise
+ggplot(summary_df, aes(x = Stadt, y = Preis, color = Stadt)) +
+  geom_segment(aes(x = Stadt, xend = Stadt, y = 0, yend = Preis), linewidth = 1.2) +
+  geom_point(size = 4) +
+  facet_wrap(~ Kennwert, scales = "free_y") +
+  scale_color_manual(values = farben) +
+  theme_minimal() +
+  labs(title = "Zusammenfassung der Preise nach Stadt", y = "Preis in CHF") +
+  theme(
+    legend.position = "bottom", 
+    legend.title = element_blank(), 
+    strip.background = element_blank(), 
+    strip.text = element_text(size = 10), 
+    axis.text.x = element_blank(), 
+    axis.ticks.x = element_blank()
+  )
+
+
+# Lollipop-Plot für Summary der Wohnungsgrössen
+ggplot(summary_df, aes(x = Stadt, y = Grösse, color = Stadt)) +
+  geom_segment(aes(x = Stadt, xend = Stadt, y = 0, yend = Grösse), linewidth = 1.2) +
+  geom_point(size = 4) +
+  facet_wrap(~ Kennwert, scales = "free_y") +
+  scale_color_manual(values = farben) +
+  theme_minimal() +
+  labs(title = "Zusammenfassung der Wohnungsgrössen nach Stadt", y = "Grösse in m²") +
+  theme(
+    legend.position = "bottom", 
+    legend.title = element_blank(), 
+    strip.background = element_blank(), 
+    strip.text = element_text(size = 10), 
+    axis.text.x = element_blank(), 
+    axis.ticks.x = element_blank()
+  )
+```
+
+## 4.2 Barplot Anzahl Angebote
+
+```{r}
+ggplot(immoscout24_df, aes(x = City, fill = City)) +
+  geom_bar() +  # Erstellt das Balkendiagramm
+  geom_text(stat = 'count', aes(label = after_stat(count)), vjust = -0.5, color = "black") +
+  labs(title = "Anzahl Angebote pro Stadt") +
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "right")
+```
+
+## 4.3 Scatterplot Wohnungsgrösse vs. Preis
+
+```{r}
+ggplot(immoscout24_df, aes(x=`Size [m2]`, y = `Price [CHF]`)) + 
+  geom_point() +
+  facet_wrap(~City) +
+  labs(title = "Vergleich Städte: Size/Price") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+## 4.4 Densityplot Preisvergleich
+
+```{r}
+ggplot(immoscout24_df, aes(x=`Price [CHF]`, fill = City)) + 
+  geom_density(alpha = 0.5) +
+  labs(title = "Preisvergleich nach Stadt") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  guides(fill = guide_legend(ovveride.aes = list(alpha = 1)))
+```
+
+## 4.5 Densityplot Wohnungsgrössenvergleich
+
+```{r}
+ggplot(immoscout24_df, aes(x=`Size [m2]`, fill = City)) + 
+  geom_density(alpha = 0.5) +  # Füllt die Density-Kurven und setzt Transparenz
+  labs(title = "Wohnungsgrössenvergleich nach Stadt") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  guides(fill = guide_legend(override.aes = list(alpha = 1)))  # Setzt Alpha für die Legende auf 1
+```
+
+## 4.6 Boxplot Preisvergleich
+
+```{r}
+ggplot(immoscout24_df, aes(x = 1, y = `Price [CHF]`, fill = City)) +
+  geom_boxplot() +
+  facet_grid(. ~ City, scales = "free_x", space = "free_x") +  # Jede Stadt bekommt eine eigene Spalte, aber alle teilen die gleiche y-Achse
+  labs(title = "Preisvergleich nach Stadt", x = "", y = "Preis in CHF") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_blank(),  # Entfernt die x-Achsen-Beschriftungen
+    axis.ticks.x = element_blank(),  # Entfernt die x-Achsen-Ticks
+    strip.background = element_blank(),  # Entfernt den Hintergrund der Facetten-Titel
+    strip.text.x = element_text(angle = 0, hjust = 0.5)  # Zentriert die Facetten-Titel
+  )
+```
+
+## 4.7 Boxplot Wohnungsgrössenvergleich
+
+```{r}
+ggplot(immoscout24_df, aes(x = 1, y = `Size [m2]`, fill = City)) +
+  geom_boxplot() +
+  facet_grid(. ~ City, scales = "free_x", space = "free_x") +  # Jede Stadt bekommt eine eigene Spalte, aber alle teilen die gleiche y-Achse
+  labs(title = "Wohnungsgrössenvergleich nach Stadt", x = "", y = "Grösse in m2") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_blank(),  # Entfernt die x-Achsen-Beschriftungen
+    axis.ticks.x = element_blank(),  # Entfernt die x-Achsen-Ticks
+    strip.background = element_blank(),  # Entfernt den Hintergrund der Facetten-Titel
+    strip.text.x = element_text(angle = 0, hjust = 0.5)  # Zentriert die Facetten-Titel
+  )
+```
+
+## 4.8 Barplot Anzahl PLZ
+
+```{r}
+# Daten nach City und PLZ gruppieren und die Anzahl für jede PLZ zählen
+grouped_city <- immoscout24_df %>%
+  group_by(City, PLZ) %>%
+  summarise(Anzahl = n(), .groups = "drop") %>%
+  group_by(City) %>%  # Gruppieren nach Stadt für die Summation
+  mutate(Total = sum(Anzahl),  # Summe der Anzahlen pro Stadt
+         Relative_Haeufigkeit = Anzahl / Total) %>%
+  ungroup()  # Entfernen der Gruppierung
+
+# Balkendiagramm erstellen mit einer Facette für jede Stadt und relative Häufigkeit anzeigen
+ggplot(grouped_city, aes(x = PLZ, y = Relative_Haeufigkeit, fill = City)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~ toupper(City), ncol = 1, scales = "free_x") +  # Städtenamen in Facetten, vertikal angeordnet
+  theme_minimal() +
+  labs(title = "Relative PLZ-Häufigkeit pro Stadt", x = "PLZ", y = "Relative Häufigkeit") +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 8),  # Dreht die PLZ auf der X-Achse für bessere Lesbarkeit und zentriert sie
+    strip.text.x = element_text(size = 12),  # Vergrössert die Facetten-Titel
+    legend.position = "none"  # Entfernt die Legende
+  )
+```
+
+# 5. RESULTATE
+
+-   **Mietpreise**: Zürich hat die höchsten Median - Mietpreise für 3.5-Zimmerwohnungen, gefolgt von Basel und Bern.
+
+-   **Preisspanne**: Zürich zeigt eine breitere Verteilung der Mietpreise, während Basel und Bern eine konzentriertere Verteilung aufweisen.
+
+-   **Durchschnittliche Wohnungsgrössen**: Die Verteilung der Wohnungsgrössen ist in allen drei Städten ähnlich, mit einem Schwerpunkt auf Wohnungen zwischen 70 und 100 Quadratmetern. In Bern dominieren kleinere Wohnungen.
+
+-   **Anzahl der Angebote**: Zürich und Basel haben fast identisch viele Angebote für 3.5-Zimmerwohnungen und bieten jeweils etwa 40% mehr Wohnungen als Bern.
+
+-   **Korrelation Preis / Wohnungsgrösse** : Es gibt eine positive Korrelation zwischen Wohnungsgrösse und Mietpreis in allen drei Städten. Zürich zeigt häufigere und extremere Ausreisser, bei denen grosse Wohnungen extrem hohe Preise haben.
+
+-   **Relative Häufigkeit PLZ**: Die freien Wohnungen konzentrieren sich in Basel auf die PLZ 4057 (ca. 20 %), in Zürich auf die PLZ 8050 (ca. 15 %) sowie Bern auf die PLZ 3018 (ca. 20 %)
+
+# 6. AUSBLICK
+
+-   **Problematik:** Stichprobengrösse mit Tag n = 1 , dadurch keine verlässliche Interpretation möglich
+
+**Weiterführende Analysen**:
+
+-   **Preisentwicklung**: Überwachung und Analyse der Mietpreisentwicklung über einen längeren Zeitraum, um Trends und Muster zu erkennen.
+
+-   **Prognosen**: Erstellung von Modellen zur Vorhersage zukünftiger Mietpreise basierend auf langfristiger Preisentwicklung
+
+-   **Stadtteilanalyse**: Detaillierte Analyse der Mietpreise auf Stadtteilebene, um Unterschiede innerhalb einer Stadt zu identifizieren.
