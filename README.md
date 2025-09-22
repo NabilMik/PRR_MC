@@ -8,5 +8,4 @@ Thema: Scraping und Vergleich von Immobilien-Mietangeboten in Zürich, Basel und
 
 ## Inhalte
 - `PRR_MC_QuartoDocument.qmd` – Quarto-Quellcode
-- `index.html` – gerenderte Version (GitHub Pages)
 - `Report/` – Ordner mit allen unterstützenden Dateien
