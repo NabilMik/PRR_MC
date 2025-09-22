@@ -1,6 +1,6 @@
 # PRR Mini-Challenge FS24
 
-Dieses Repository enthält meine Lösung zur Mini-Challenge im Modul *Programmieren in R (PRR)*.  
+Dieses Repository enthält die Mini-Challenge im Modul *Programmieren in R (PRR)*.  
 Thema: Scraping und Vergleich von Immobilien-Mietangeboten in Zürich, Basel und Bern.  
 
 ## Report
