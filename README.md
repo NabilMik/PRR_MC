@@ -1,6 +1,12 @@
 # PRR Mini-Challenge FS24
 
-Dieses Repository enthält die Ergebnisse der Mini-Challenge im Modul SPZ.  
-👉 [Hier die gerenderte HTML-Version ansehen](https://nabilmik.github.io/PRR_MC/Report/PRR_MC_QuartoDocument.html)
+Dieses Repository enthält meine Lösung zur Mini-Challenge im Modul *Programmieren in R (PRR)*.  
+Thema: Scraping und Vergleich von Immobilien-Mietangeboten in Zürich, Basel und Bern.  
 
-Autoren: Nabil Mikhael, Alessandro Gregori
+## Report
+👉 [Hier den Report online ansehen](https://nabilmik.github.io/PRR_MC/)  
+
+## Inhalte
+- `PRR_MC_QuartoDocument.qmd` – Quarto-Quellcode
+- `index.html` – gerenderte Version (GitHub Pages)
+- `Report/` – Ordner mit allen unterstützenden Dateien
