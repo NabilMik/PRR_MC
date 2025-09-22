@@ -1,0 +1,108 @@
+---
+title: "Wohnungsjagd in der Schweiz: Ein WebScraping-Abenteuer durch Bern, Basel und Zürich"
+author: "Nabil Mikhael | Alessandro Gregori"
+format: beamer
+editor: visual
+header-includes: 
+  - \setbeamertemplate{footline}[frame number]
+   \usetheme {default}
+---
+
+# Einleitung
+
+-   **Ziel**:\
+    Untersuchung von 3.5-Zimmerwohnungen in Zürich, Basel und Bern
+
+-   **Vorgehen**:\
+    Webscraping der Plattform immoscout24.ch mit RVEST (Stand 21.05)
+
+-   **Was ist Webscraping?**\
+    Webscraping ist eine Technik zur automatisierten Extraktion von Daten aus Webseiten.
+
+# Kernfunktionen von RVEST:
+
+-   `read_html()`: Lädt HTML-Inhalte von Webseiten.
+
+-   `html_elements()`: Extrahiert HTML-Elemente aus HTML-Dokument mittels CSS-Selektoren
+
+-   `html_text()`: Extrahiert den Textinhalt von HTML-Elementen
+
+# Implementierung - Funktion Extraktion letzte Seite (1/2)
+
+![](images/Extraktion_%20letzte%20Seite.png){width="100%" height="100%"}
+
+# Implementierung - Funktion Extraktion letzte Seite (2/2)
+
+![](images/Funktion_Extraktion_letzte%20Seite.png){width="100%" height="100%"}
+
+# Web-Scraping Preis, Wohnungsgrösse und PLZ pro Stadt
+
+![](images/Web_Scraping.png){width="100%" height="100%"}
+
+# Datenzusammenführung im DataFrame:
+
+![](images/Data_Frame.png){width="100%" height="100%"}
+
+# Lollipop-Plot - Preise
+
+![](images/Lollipop_Plot_Preise_.png){width="100%" height="100%"}
+
+# Lollipop-Plot - Wohnungsgrösse
+
+![](images/Lollipop_Plot_Wohnungsgrösse.png){width="100%" height="100%"}
+
+# Barplot Anzahl Angebote pro Stadt
+
+![](images/Anzahl_Angebote_pro_Stadt.png){width="100%" height="100%"}
+
+# Scatterplot Wohnungsgrösse vs Preis
+
+![](images/Scatterplot%20Wohnungsgrösse%20vs%20Preis.png){width="100%" height="100%"}
+
+# Densityplot Wohnungsgrössenvergleich
+
+![](images/Densityplot_Wohnungssgrössenvergleich.png){width="100%" height="100%"}
+
+# Densityplot Preisvergleich
+
+![](images/Densityplot_Preisvergleich.png){width="100%" height="100%"}
+
+# Boxplot Preisvergleich
+
+![](images/Boxplot_Preisvergleich.png){width="100%" height="100%"}
+
+# Boxplot Wohnungsgrössenvergleich
+
+![](images/Boxplot_Wohnungsgrössenvergleich.png){width="100%" height="100%"}
+
+# Barplot Anzahl PLZ
+
+![](images/Barplot_Anzahl_PLZ.png){width="100%" height="100%"}
+
+# Zusammenfassung (1/2)
+
+-   **Mietpreise**: Zürich hat die höchsten Median - Mietpreise für 3.5-Zimmerwohnungen, gefolgt von Basel und Bern.
+
+-   **Preisspanne**: Zürich zeigt eine breitere Verteilung der Mietpreise, während Basel und Bern eine konzentriertere Verteilung aufweisen.
+
+-   **Durchschnittliche Wohnungsgrössen**: Die Verteilung der Wohnungsgrössen ist in allen drei Städten ähnlich, mit einem Schwerpunkt auf Wohnungen zwischen 70 und 100 Quadratmetern. In Bern dominieren kleinere Wohnungen.
+
+# Zusammenfassung (2/2)
+
+-   **Anzahl der Angebote**: Zürich und Basel haben fast identisch viele Angebote für 3.5-Zimmerwohnungen und bieten jeweils etwa 40% mehr Wohnungen als Bern.
+
+-   **Korrelation Preis / Wohnungsgrösse** : Es gibt eine positive Korrelation zwischen Wohnungsgrösse und Mietpreis in allen drei Städten. Zürich zeigt häufigere und extremere Ausreisser, bei denen grosse Wohnungen extrem hohe Preise haben.
+
+-   **Relative Häufigkeit PLZ**: Die freien Wohnungen konzentrieren sich in Basel auf die PLZ 4057 (ca. 20 %), in Zürich auf die PLZ 8050 (ca. 15 %) sowie Bern auf die PLZ 3018 (ca. 20 %)
+
+# Ausblick
+
+-   **Problematik:** Stichprobengrösse mit Tag n = 1 , dadurch keine verlässliche Interpretation möglich
+
+**Weiterführende Analysen**:
+
+-   **Preisentwicklung**: Überwachung und Analyse der Mietpreisentwicklung über einen längeren Zeitraum, um Trends und Muster zu erkennen.
+
+-   **Prognosen**: Erstellung von Modellen zur Vorhersage zukünftiger Mietpreise basierend auf langfristiger Preisentwicklung
+
+-   **Stadtteilanalyse**: Detaillierte Analyse der Mietpreise auf Stadtteilebene, um Unterschiede innerhalb einer Stadt zu identifizieren.
