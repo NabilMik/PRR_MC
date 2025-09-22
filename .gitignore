@@ -1,1 +1,17 @@
+# macOS
 .DS_Store
+
+# RStudio / R
+.Rhistory
+.RData
+.Rproj.user/
+
+# Quarto / Reports
+*.pdf
+*_files/
+*.knit.md
+*.utf8.md
+
+# renv
+renv/library/
+renv/staging/
